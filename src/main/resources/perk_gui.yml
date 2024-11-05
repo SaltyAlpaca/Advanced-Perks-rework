@@ -1,0 +1,11 @@
+# perk_gui.yml
+
+perk_icon_locations: [1, 3, 5, 7, 19, 21, 23, 25]
+perk_toggle_locations: [10, 12, 14, 16, 28, 30, 32, 34]
+
+close_gui: 46
+disable_all_perks: 48
+setup_gui: 49
+previous_page: 50
+next_page: 52
+background: true
