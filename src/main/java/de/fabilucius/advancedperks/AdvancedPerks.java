@@ -3,6 +3,8 @@ package de.fabilucius.advancedperks;
 import com.google.inject.Guice;
 import com.google.inject.Inject;
 import com.google.inject.Injector;
+import de.fabilucius.advancedperks.api.AdvancedPerksAPI;
+import de.fabilucius.advancedperks.api.manager.PerkManager;
 import de.fabilucius.advancedperks.command.PerksCommand;
 import de.fabilucius.advancedperks.core.command.AbstractCommand;
 import de.fabilucius.advancedperks.core.logging.APLogger;
@@ -23,6 +25,7 @@ import java.lang.reflect.Field;
 import java.nio.file.Files;
 import java.nio.file.StandardCopyOption;
 import java.util.logging.Level;
+import static de.fabilucius.advancedperks.api.AdvancedPerksAPI.perkManager;
 
 public class AdvancedPerks extends JavaPlugin {
 
@@ -31,7 +34,11 @@ public class AdvancedPerks extends JavaPlugin {
 
     @Inject
     private Injector injector;
+    @Inject
+    private PerkManager perkManager;
 
+    @Inject
+    private AdvancedPerksAPI advancedPerksApi;
     @Override
     public void onEnable() {
         createDefaultConfigFiles();
@@ -103,7 +110,13 @@ public class AdvancedPerks extends JavaPlugin {
             getLogger().log(Level.SEVERE, String.format("Failed to register command: %s", commandName), e);
         }
     }
+    public PerkManager getPerkManager() {
+        return perkManager;
+    }
 
+    public AdvancedPerksAPI getAdvancedPerksApi() {
+        return advancedPerksApi;
+    }
 
     @Override
     public void onDisable() {

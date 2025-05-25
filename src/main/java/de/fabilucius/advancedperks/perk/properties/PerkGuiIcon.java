@@ -10,6 +10,9 @@ import org.bukkit.inventory.ItemStack;
 
 import java.util.Optional;
 
+import org.bukkit.inventory.meta.ItemMeta;
+import org.bukkit.inventory.ItemFlag;
+
 public class PerkGuiIcon {
 
     private final ItemStack itemStack;
@@ -28,13 +31,29 @@ public class PerkGuiIcon {
                         .setBase64Value(data)
                         .build();
             } else {
-                throw new IllegalArgumentException("Unable to parse the perk gui icon the following data is neither a valid material nor a valid base64 encoded skull texture: %s".formatted(data));
+                throw new IllegalArgumentException("Unable to parse the perk gui icon. The data provided is neither a valid material nor a valid base64 encoded skull texture: %s".formatted(data));
             }
         }
+        hideItemMeta();
     }
 
     public PerkGuiIcon(Material material) {
+        hideItemMeta();
         this.itemStack = new ItemStack(material);
+    }
+
+    private void hideItemMeta() {
+        ItemMeta meta = this.itemStack.getItemMeta();
+        if (meta != null) {
+            meta.addItemFlags(ItemFlag.HIDE_ATTRIBUTES);
+            meta.addItemFlags(ItemFlag.HIDE_ENCHANTS);
+            meta.addItemFlags(ItemFlag.HIDE_UNBREAKABLE);
+            meta.addItemFlags(ItemFlag.HIDE_DESTROYS);
+            meta.addItemFlags(ItemFlag.HIDE_PLACED_ON);
+            meta.addItemFlags(ItemFlag.HIDE_ADDITIONAL_TOOLTIP);
+            meta.addItemFlags(ItemFlag.HIDE_DYE);
+            this.itemStack.setItemMeta(meta);
+        }
     }
 
     public ItemStack getIcon() {

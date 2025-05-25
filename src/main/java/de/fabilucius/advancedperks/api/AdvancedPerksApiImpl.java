@@ -6,22 +6,18 @@ import de.fabilucius.advancedperks.data.state.PerkStateController;
 import de.fabilucius.advancedperks.data.state.PerkToggleResult;
 import de.fabilucius.advancedperks.data.state.PerkUseStatus;
 import de.fabilucius.advancedperks.perk.Perk;
-import de.fabilucius.advancedperks.registry.PerkRegistryImpl;
+import de.fabilucius.advancedperks.registry.PerkRegistry;
 import org.bukkit.entity.Player;
 
 @Singleton
-public class AdvancedPerksApiImpl implements AdvancedPerksApi {
-
-    private static AdvancedPerksApiImpl instance;
-
-    @Inject
-    private PerkStateController perkStateController;
+public class AdvancedPerksApiImpl implements AdvancedPerksSTATE {
+    private final PerkStateController perkStateController;
+    private final PerkRegistry perkRegistry;
 
     @Inject
-    private PerkRegistryImpl perkRegistry;
-
-    public AdvancedPerksApiImpl() {
-        instance = this;
+    public AdvancedPerksApiImpl(PerkStateController perkStateController, PerkRegistry perkRegistry) {
+        this.perkStateController = perkStateController;
+        this.perkRegistry = perkRegistry;
     }
 
     @Override
@@ -30,7 +26,7 @@ public class AdvancedPerksApiImpl implements AdvancedPerksApi {
     }
 
     @Override
-    public PerkRegistryImpl getPerkRegistry() {
+    public PerkRegistry getPerkRegistry() {
         return this.perkRegistry;
     }
 
@@ -41,7 +37,7 @@ public class AdvancedPerksApiImpl implements AdvancedPerksApi {
 
     @Override
     public PerkToggleResult forceEnablePerk(Player player, Perk perk) {
-        return this.perkStateController.togglePerk(player, perk);
+        return this.perkStateController.forceEnablePerk(player, perk);
     }
 
     @Override
@@ -52,12 +48,6 @@ public class AdvancedPerksApiImpl implements AdvancedPerksApi {
     @Override
     public boolean hasPermissionForPerk(Player player, Perk perk) {
         PerkUseStatus useStatus = this.perkStateController.canUsePerk(player, perk);
-        return !useStatus.equals(PerkUseStatus.NO_PERMISSION);
+        return useStatus != PerkUseStatus.NO_PERMISSION;
     }
-
-    /* Singleton stuff */
-    public static AdvancedPerksApiImpl getInstance() {
-        return instance;
-    }
-
 }

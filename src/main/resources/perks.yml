@@ -178,7 +178,7 @@ double_jump:
   display_name: '&9&lDouble Jump Perk'
   description:
     - '&7&oActivating this perk will grant the ability'
-    - '&7&oto let the Player Jump twice with a boost'
+    - '&7&oto let the Player Jump in the air for a boost.'
   icon: 'WIND_CHARGE'
   flags:
     permission: 'advancedperks.use.double_jump'
@@ -202,7 +202,7 @@ lucky:
     permission: 'advancedperks.use.lucky'
 hero:
   enabled: true
-  display_name: '&b&lHero Perk'
+  display_name: '&6&lHero Perk'
   description:
     - '&7&oActivating this perk will grant the player'
     - '&7&obetter deals with Villager'
@@ -211,10 +211,28 @@ hero:
     permission: 'advancedperks.use.hero'
 auto_tool:
   enabled: true
-  display_name: '&c&lAuto Tool Perk'
+  display_name: '&7&lAuto Tool Perk'
   description:
     - '&7&oActivating this perk will grant the player'
     - '&7&oeasier usage of Tools'
   icon: 'NETHERITE_AXE'
   flags:
     permission: 'advancedperks.use.auto_tool'
+bounty:
+  enabled: true
+  display_name: '&c&lBounty Perk'
+  description:
+    - '&7&oActivating this perk will grant the player'
+    - '&7&o50% chance to get double drops from Mobs'
+  icon: 'MAP'
+  flags:
+    permission: 'advancedperks.use.bounty'
+peace:
+  enabled: true
+  display_name: '&d&lPeace Perk'
+  description:
+    - '&7&oActivating this perk will grant the player'
+    - '&7&oto live peacefully under many Mob (except mobs inside Dungeons or Wardens)'
+  icon: 'SWEET_BERRIES'
+  flags:
+    permission: 'advancedperks.use.peace'

@@ -1,9 +1,9 @@
-prefix: '&7[&6ap&7]'
+prefix: '&6&lAdvancedPerks &8»'
 gui:
   perk_gui:
-    title: '&8&lChoose a perk...'
-    close_gui: '&cClose gui'
-    disable_all_perks: '&cDisable all perks'
+    title: '&8Perks'
+    close_gui: '&c&lClose gui'
+    disable_all_perks: '&c&lDisable all perks'
     previous_page: '&7Previous Page'
     next_page: '&7Next Page'
     toggle:

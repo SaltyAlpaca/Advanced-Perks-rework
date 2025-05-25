@@ -20,6 +20,8 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.util.Date;
 
+import org.bukkit.configuration.file.FileConfiguration;
+
 @Singleton
 public class UpdateChecker implements Listener {
 
@@ -31,10 +33,16 @@ public class UpdateChecker implements Listener {
 
     private UpdateData updateData;
     private boolean updateAvailable;
+    private boolean updateLoggerEnabled;
 
     @Inject
     public UpdateChecker(AdvancedPerks advancedPerks, APLogger logger) {
         Bukkit.getPluginManager().registerEvents(this, advancedPerks);
+
+        // Load the setting from settings.yml
+        FileConfiguration config = advancedPerks.getConfig();
+        this.updateLoggerEnabled = config.getBoolean("update-logger-enabled", true); // default to true if not specified
+
         try {
             URI uri = URI.create(UPDATE_CHECK_URL);
             HttpRequest request = HttpRequest.newBuilder()
@@ -53,13 +61,14 @@ public class UpdateChecker implements Listener {
 
     @EventHandler
     public void onPlayerJoin(PlayerJoinEvent event) {
+
         Player player = event.getPlayer();
-        if ((player.isOp() || player.hasPermission("advancedperks.admin")) && this.updateAvailable) {
+
+        if ((player.isOp() || player.hasPermission("advancedperks.admin")) && this.updateAvailable && !updateLoggerEnabled) {
             player.sendMessage(" ");
             player.sendMessage(ChatColor.GRAY + "There is an update available for " + ChatColor.GOLD + "Advanced Perks " + ChatColor.GRAY + " the latest version is " + ChatColor.GOLD + this.updateData.getName());
             player.sendMessage(ChatColor.GRAY + "The update was released " + ChatColor.GOLD + this.updateData.getReleaseDate().toString());
             player.sendMessage(" ");
         }
     }
-
 }

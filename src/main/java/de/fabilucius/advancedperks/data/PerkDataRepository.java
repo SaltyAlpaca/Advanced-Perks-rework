@@ -7,7 +7,6 @@ import de.fabilucius.advancedperks.AdvancedPerks;
 import de.fabilucius.advancedperks.core.database.Database;
 import de.fabilucius.advancedperks.core.logging.APLogger;
 import de.fabilucius.advancedperks.data.state.PerkStateController;
-import de.fabilucius.advancedperks.perk.Perk;
 import de.fabilucius.advancedperks.registry.PerkRegistryImpl;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
@@ -17,12 +16,11 @@ import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.jetbrains.annotations.NotNull;
 
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.UUID;
-import java.util.List;
 
 import java.util.concurrent.CompletableFuture;
+import java.util.logging.Level;
 
 public class PerkDataRepository implements Listener {
 
@@ -102,21 +100,10 @@ public class PerkDataRepository implements Listener {
             // Save perk data asynchronously on player quit
             this.savePerkDataAsync(perkData);
 
-            // Disable all active perks before invalidating the cache
-            disableAllPerks(player, perkData);
-
-            // Remove player’s data from the cache
             this.perkDataCache.invalidate(playerUUID);
         }
     }
 
-    private void disableAllPerks(Player player, PerkData perkData) {
-        List<Perk> enabledPerks = new ArrayList<>(perkData.getEnabledPerks());
-        enabledPerks.forEach(perk -> {
-            perk.onPrePerkDisable(player);  // Handle any necessary cleanup
-            this.perkStateController.disablePerk(player, perk); // Ensure proper disabling
-        });
-    }
 
 
 
@@ -135,16 +122,24 @@ public class PerkDataRepository implements Listener {
 
 
     public void savePerkDataAsync(PerkData perkData) {
-        Bukkit.getScheduler().runTaskAsynchronously(this.advancedPerks, () -> this.savePerkDataSync(perkData));
+        Bukkit.getScheduler().runTaskAsynchronously(this.advancedPerks, () -> {
+            try {
+                this.savePerkDataSync(perkData);
+            } catch (Exception e) {
+                logger.log(Level.SEVERE, "Failed to save perk data for UUID: " + perkData.getUuid(), e);
+            }
+        });
     }
 
+
     private void savePerkDataSync(PerkData perkData) {
-        /* Small check to find out if perk data needs to be saved to the database */
+
         if (!perkData.isLoaded() || Arrays.equals(perkData.getDataHash(), perkData.calculateDataHash())) {
             return;
         }
         this.database.savePerkData(perkData);
     }
+
 
     public void handleShutdown() {
         this.perkDataCache.asMap().values().forEach(this::savePerkDataSync);

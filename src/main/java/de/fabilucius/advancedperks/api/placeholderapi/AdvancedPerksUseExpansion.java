@@ -1,39 +1,40 @@
 package de.fabilucius.advancedperks.api.placeholderapi;
 
-import com.google.inject.Inject;
 import de.fabilucius.advancedperks.AdvancedPerks;
-import de.fabilucius.advancedperks.api.AdvancedPerksApi;
-import de.fabilucius.advancedperks.core.logging.APLogger;
-import de.fabilucius.advancedperks.perk.Perk;
+import de.fabilucius.advancedperks.api.AdvancedPerksAPI;
 import de.fabilucius.advancedperks.registry.PerkRegistryImpl;
+import de.fabilucius.advancedperks.perk.Perk;
 import org.bukkit.entity.Player;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+/**
+ * Placeholder to check if a player has permission (unlock) for a perk.
+ * Usage: %advancedperks.use_<perkId>%
+ */
 public class AdvancedPerksUseExpansion extends AbstractAdvancedPerksExpansion {
+    private final PerkRegistryImpl perkRegistry;
 
-    @Inject
-    private PerkRegistryImpl perkRegistryImpl;
-
-    @Inject
-    private AdvancedPerksApi advancedPerksApi;
-
-    @Inject
-    public AdvancedPerksUseExpansion(APLogger logger, AdvancedPerks advancedPerks) {
-        super(logger, advancedPerks);
-    }
-
-    @Override
-    public @Nullable String onPlaceholderRequest(Player player, @NotNull String params) {
-        Perk perk = this.perkRegistryImpl.getPerkByIdentifier(params);
-        if (perk == null) {
-            return null;
-        }
-        return String.valueOf(this.advancedPerksApi.hasPermissionForPerk(player, perk));
+    public AdvancedPerksUseExpansion(AdvancedPerks plugin, PerkRegistryImpl perkRegistry) {
+        super(plugin);
+        this.perkRegistry = perkRegistry;
     }
 
     @Override
     public @NotNull String getIdentifier() {
         return "advancedperks.use";
+    }
+
+    @Override
+    public @Nullable String onPlaceholderRequest(Player player, @NotNull String params) {
+        if (player == null || params.isEmpty()) {
+            return "";
+        }
+        Perk perk = perkRegistry.getPerkByIdentifier(params);
+        if (perk == null) {
+            return "";
+        }
+        boolean unlocked = AdvancedPerksAPI.isPerkUnlocked(player, params);
+        return String.valueOf(unlocked);
     }
 }

@@ -9,15 +9,11 @@ import de.fabilucius.advancedperks.perk.properties.PerkDescription;
 import de.fabilucius.advancedperks.perk.properties.PerkGuiIcon;
 import de.fabilucius.advancedperks.perk.types.ListenerPerk;
 import org.bukkit.Material;
-import org.bukkit.entity.Entity;
-import org.bukkit.entity.EntityType;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.block.Action;
 import org.bukkit.event.player.PlayerInteractEvent;
-import org.bukkit.event.player.PlayerMoveEvent;
 import org.bukkit.inventory.ItemStack;
-import org.bukkit.util.Vector;
 
 import java.util.HashSet;
 import java.util.Map;
@@ -30,24 +26,8 @@ public class AutoToolPerk extends AbstractDefaultPerk implements ListenerPerk {
     private static final Set<Material> MINING_BLOCKS = new HashSet<>();
     private static final Set<Material> WOOD_BLOCKS = new HashSet<>();
     private static final Set<Material> SHEARABLE_BLOCKS = new HashSet<>();
-    private static final Set<Material> SWORDS = Set.of(
-            Material.WOODEN_SWORD, Material.STONE_SWORD, Material.IRON_SWORD, Material.GOLDEN_SWORD,
-            Material.DIAMOND_SWORD, Material.NETHERITE_SWORD
-    );
-    private static final Set<EntityType> EVIL_MOBS = Set.of(
-            EntityType.ZOMBIE,
-            EntityType.SKELETON,
-            EntityType.CREEPER,
-            EntityType.SPIDER,
-            EntityType.ENDERMAN,
-            EntityType.WITCH,
-            EntityType.HUSK,
-            EntityType.STRAY,
-            EntityType.DROWNED,
-            EntityType.PILLAGER,
-            EntityType.VINDICATOR,
-            EntityType.EVOKER
-    );
+
+
     static {
         for (Material material : Material.values()) {
             String name = material.name().toUpperCase();
@@ -118,41 +98,7 @@ public class AutoToolPerk extends AbstractDefaultPerk implements ListenerPerk {
         }
     }
 
-    @EventHandler
-    public void onPlayerMove(PlayerMoveEvent event) {
-        Player player = event.getPlayer();
-        PerkData perkData = perkDataRepository.getPerkDataByPlayer(player);
 
-        if (!perkData.getEnabledPerks().contains(this)) {
-            return;
-        }
-
-        Entity target = getTargetEntity(player, 5);
-        if (target != null) {
-            int bestSwordSlot = findBestSwordSlot(player);
-
-            if (bestSwordSlot != -1 && bestSwordSlot != player.getInventory().getHeldItemSlot()) {
-                ItemStack currentItem = player.getInventory().getItemInMainHand();
-                ItemStack bestSword = player.getInventory().getItem(bestSwordSlot);
-
-                player.getInventory().setItemInMainHand(bestSword);
-                player.getInventory().setItem(bestSwordSlot, currentItem);
-            }
-        }
-    }
-
-    private Entity getTargetEntity(Player player, int range) {
-        Vector direction = player.getLocation().getDirection();
-        for (Entity entity : player.getNearbyEntities(range, range, range)) {
-            if (entity != null && EVIL_MOBS.contains(entity.getType())) { // Check if the entity is an "evil mob"
-                Vector toEntity = entity.getLocation().toVector().subtract(player.getLocation().toVector()).normalize();
-                if (direction.dot(toEntity) > 0.95) { // 0.95 is a threshold for "looking at"
-                    return entity;
-                }
-            }
-        }
-        return null;
-    }
 
 
     private int findBestToolSlot(Player player, Material blockType) {
@@ -174,24 +120,7 @@ public class AutoToolPerk extends AbstractDefaultPerk implements ListenerPerk {
         return bestToolSlot;
     }
 
-    private int findBestSwordSlot(Player player) {
-        int bestSwordSlot = -1;
-        double bestDamage = 0;
 
-        for (int i = 0; i < player.getInventory().getSize(); i++) {
-            ItemStack item = player.getInventory().getItem(i);
-            if (item == null || !SWORDS.contains(item.getType())) {
-                continue;
-            }
-
-            double damage = getMaterialEfficiency(item.getType());
-            if (damage > bestDamage) {
-                bestDamage = damage;
-                bestSwordSlot = i;
-            }
-        }
-        return bestSwordSlot;
-    }
 
     private double getToolSpeed(ItemStack tool, Material blockType) {
         Material toolType = tool.getType();

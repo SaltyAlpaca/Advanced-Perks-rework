@@ -9,7 +9,6 @@ import de.fabilucius.advancedperks.api.AdvancedPerksApiImpl
 import de.fabilucius.advancedperks.api.placeholderapi.AdvancedPerksEnabledExpansion
 import de.fabilucius.advancedperks.api.placeholderapi.AdvancedPerksPerkLimitExpansion
 import de.fabilucius.advancedperks.api.placeholderapi.AdvancedPerksUseExpansion
-import de.fabilucius.advancedperks.compatabilities.CompatibilityController
 import de.fabilucius.advancedperks.core.database.Database
 import de.fabilucius.advancedperks.core.database.DatabaseProvider
 import de.fabilucius.advancedperks.core.economy.EconomyController
@@ -33,46 +32,54 @@ import java.io.File
 class PrimaryModule(private val advancedPerks: AdvancedPerks) : AbstractModule() {
 
     override fun configure() {
-        bind(AdvancedPerks::class.java).toInstance(this.advancedPerks)
-        bind(File::class.java).annotatedWith(Names.named("configurationDirectory")).toInstance(
-            advancedPerks.dataFolder
-        )
+        bindCoreComponents()
+        bindOptionalDependencies()
+        bindPlaceholdersIfEnabled()
+    }
+
+    private fun bindCoreComponents() {
+        bind(AdvancedPerks::class.java).toInstance(advancedPerks)
+        bind(File::class.java).annotatedWith(Names.named("configurationDirectory")).toInstance(advancedPerks.dataFolder)
+
         bind(APLogger::class.java).asEagerSingleton()
-        bind(PerkRegistry::class.java).to(PerkRegistryImpl::class.java)
+        bind(PerkRegistry::class.java).to(PerkRegistryImpl::class.java).asEagerSingleton()
         bind(PerkYmlLoader::class.java).asEagerSingleton()
         bind(PerkDataRepository::class.java).asEagerSingleton()
         bind(Database::class.java).toProvider(DatabaseProvider::class.java)
         bind(PerkStateController::class.java).asEagerSingleton()
         bind(GuiSystemManager::class.java).asEagerSingleton()
-        bind(NamespacedKey::class.java).annotatedWith(Names.named("uuidKey")).toProvider(
-            NamespacedKeyProvider::class.java
-        )
-        bind(AdvancedPerksApi::class.java).to(AdvancedPerksApiImpl::class.java)
+        bind(AdvancedPerksApi::class.java).to(AdvancedPerksApiImpl::class.java).asEagerSingleton()
+        bind(UpdateChecker::class.java).asEagerSingleton()
 
+        bind(NamespacedKey::class.java).annotatedWith(Names.named("uuidKey")).toProvider(NamespacedKeyProvider::class.java)
+    }
+
+    private fun bindOptionalDependencies() {
+        bindEconomyController()
+        bindLuckPerms()
+    }
+
+    private fun bindPlaceholdersIfEnabled() {
         if (Bukkit.getPluginManager().isPluginEnabled("PlaceholderAPI")) {
             bind(AdvancedPerksUseExpansion::class.java).asEagerSingleton()
             bind(AdvancedPerksEnabledExpansion::class.java).asEagerSingleton()
             bind(AdvancedPerksPerkLimitExpansion::class.java).asEagerSingleton()
         }
+    }
 
+    private fun bindEconomyController() {
         bind(EconomyController::class.java).asEagerSingleton()
         if (Bukkit.getPluginManager().isPluginEnabled("Vault")) {
             bind(EconomyInterface::class.java).to(VaultEconomyInterface::class.java)
         } else {
             bind(EconomyInterface::class.java).toProvider(Providers.of<EconomyInterface?>(null))
         }
+    }
 
-        bind(CompatibilityController::class.java).asEagerSingleton()
-        bind(UpdateChecker::class.java).asEagerSingleton()
-
-        // Bind LuckPerms if it's enabled
+    private fun bindLuckPerms() {
         if (Bukkit.getPluginManager().isPluginEnabled("LuckPerms")) {
             val provider: RegisteredServiceProvider<LuckPerms>? = Bukkit.getServicesManager().getRegistration(LuckPerms::class.java)
-            if (provider != null) {
-                bind(LuckPerms::class.java).toInstance(provider.provider)
-            } else {
-                bind(LuckPerms::class.java).toProvider(Providers.of<LuckPerms>(null))
-            }
+            bind(LuckPerms::class.java).toInstance(provider?.provider ?: Providers.of<LuckPerms>(null).get())
         } else {
             bind(LuckPerms::class.java).toProvider(Providers.of<LuckPerms>(null))
         }

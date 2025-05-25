@@ -8,6 +8,7 @@ import org.apache.commons.io.IOUtils;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.sql.Connection;
+import java.sql.SQLTransientException;
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
@@ -15,6 +16,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
 import java.util.logging.Level;
+
 
 public abstract class AbstractDatabase implements Database {
 
@@ -86,12 +88,19 @@ public abstract class AbstractDatabase implements Database {
             if (!this.isConnected()) {
                 this.connectToDatabase();
             }
-            return this.connection.prepareStatement(query);
+            PreparedStatement statement = this.connection.prepareStatement(query);
+            this.logger.debug("PreparedStatement created: %s".formatted(query));
+            return statement;
+        } catch (SQLTransientException e) {
+            this.logger.log(Level.WARNING, "Temporary database issue. Retrying query: %s".formatted(query), e);
+            this.connectToDatabase();
+            return createPreparedStatement(query); // Einmalige Wiederholung
         } catch (SQLException e) {
-            this.logger.log(Level.INFO, "Error while creating a prepared statement with query %s.".formatted(query), e);
+            this.logger.log(Level.SEVERE, "Error creating PreparedStatement for query: %s".formatted(query), e);
             return null;
         }
     }
+
 
     /* the getter and setter of the class */
 

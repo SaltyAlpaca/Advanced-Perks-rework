@@ -8,7 +8,7 @@ file:
 database:
   # The url the plugin will use to try to make a connection when save_type is set to 'DATABASE'
   sql_url: 'jdbc:mysql://127.0.0.1:3306/perks?useSSL=false'
-  # If authentication is required you can set the username and password if not leave it empty
+  # Here you can put the credentials for the Database
   credentials:
-    username: 'example'
-    password: 'example'
+    username: 'user'
+    password: 'passi_password'

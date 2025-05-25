@@ -38,20 +38,33 @@ public class RemoteDatabase extends AbstractDatabase {
     public void savePerkData(PerkData perkData) {
         String saveQuery = "INSERT INTO ap_data(unique_id, enabled_perks, bought_perks, data_hash) VALUES(?, ?, ?, ?) ON DUPLICATE KEY UPDATE enabled_perks = ?, bought_perks = ?, data_hash = ?";
         try (PreparedStatement saveStatement = this.createPreparedStatement(saveQuery)) {
+            if (saveStatement == null) {
+                this.logger.log(Level.WARNING, "PreparedStatement could not be created, skipping save operation for PerkData.");
+                return;
+            }
+
             String enabledPerks = perkData.getEnabledPerks().stream().map(Perk::getIdentifier).collect(Collectors.joining(","));
             String boughtPerks = String.join(",", perkData.getBoughtPerks());
+
+            // Set parameters for insert
             saveStatement.setString(1, perkData.getUuid().toString());
             saveStatement.setString(2, enabledPerks);
             saveStatement.setString(3, boughtPerks);
             saveStatement.setBytes(4, perkData.calculateDataHash());
+
+            // Set parameters for update
             saveStatement.setString(5, enabledPerks);
             saveStatement.setString(6, boughtPerks);
             saveStatement.setBytes(7, perkData.calculateDataHash());
+
+            // Execute the statement without committing, as autocommit=true
             saveStatement.execute();
+
         } catch (SQLException exception) {
             this.logger.log(Level.WARNING, "An error occurred while saving the PerkData for uniqueId %s.".formatted(perkData.getUuid().toString()), exception);
         }
     }
+
 
     @Override
     public boolean runPerkDataMigrateScript() {

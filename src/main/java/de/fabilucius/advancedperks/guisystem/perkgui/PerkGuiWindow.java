@@ -55,26 +55,50 @@ public class PerkGuiWindow extends AbstractPageGuiWindow {
                 this.addGuiElement(new GuiBackgroundElement(this), i);
             }
         }
-        List<Perk> perks = this.perkRegistryImpl.getPerks().stream().toList().subList(page * PERKS_PER_PAGE,
-                Math.min(perkRegistryImpl.getPerks().size(), (page + 1) * PERKS_PER_PAGE));
-        AtomicInteger index = new AtomicInteger();
+
         PerkData perkData = this.perkDataRepository.getPerkDataByPlayer(this.getPlayer());
+
+        // Filter alle Perks, die auf dem Server aktiviert sind (isEnabled)
+        List<Perk> filteredPerks = this.perkRegistryImpl.getPerks().stream()
+                .filter(Perk::isEnabled) // Nur aktivierte Perks aus der Konfiguration
+                .toList();
+
+        // Überprüfen, ob die Seite gültig ist
+        int maxPage = (int) Math.ceil((double) filteredPerks.size() / PERKS_PER_PAGE) - 1;
+        if (page < 0 || page > maxPage) {
+            page = 0; // Standardmäßig auf die erste Seite zurücksetzen
+        }
+
+        List<Perk> perksForPage = filteredPerks.stream()
+                .skip((long) page * PERKS_PER_PAGE)
+                .limit(PERKS_PER_PAGE)
+                .toList();
+
+        AtomicInteger index = new AtomicInteger();
         this.perkGuiConfiguration.getPerkIconLocations().forEach(perkIconLocation -> {
             int currentIndex = index.getAndIncrement();
-            if (currentIndex < perks.size()) {
-                Perk perk = perks.get(currentIndex);
+            if (currentIndex < perksForPage.size()) {
+                Perk perk = perksForPage.get(currentIndex);
                 if (perk != null) {
                     this.addGuiElement(new PerkIconElement(this, perk), perkIconLocation.iconSlot());
                     this.addGuiElement(new PerkToggleElement(this, this.messagesConfiguration, perk, perkData.getEnabledPerks().contains(perk), !this.perkStateController.canUsePerk(this.getPlayer(), perk).equals(PerkUseStatus.NO_PERMISSION), this.messagesConfiguration.getMessage("gui.perk_gui.toggle.not_unlocked"), this.messagesConfiguration.getMessage("gui.perk_gui.toggle.enabled"), this.messagesConfiguration.getMessage("gui.perk_gui.toggle.disabled")), perkIconLocation.toggleSlot());
                 }
             }
         });
+
         this.addGuiElement(new CloseGuiWindowElement(this, this.messagesConfiguration.getMessage("gui.perk_gui.close_gui")), this.perkGuiConfiguration.getCloseGuiSlot());
         this.addGuiElement(new DisableAllPerksElement(this, this.messagesConfiguration.getMessage("gui.perk_gui.disable_all_perks")), this.perkGuiConfiguration.getDisableAllPerksSlot());
         if (this.getPlayer().hasPermission("advancedperks.gui.setup")) {
             this.addGuiElement(new PerkGuiSetupElement(this), this.perkGuiConfiguration.getSetupGuiSlot());
         }
-        this.addGuiElement(new PreviousPageElement(this, this.messagesConfiguration.getMessage("gui.perk_gui.previous_page")), this.perkGuiConfiguration.getPreviousPageSlot());
-        this.addGuiElement(new NextPageElement(this, this.messagesConfiguration.getMessage("gui.perk_gui.next_page"), this.perkRegistryImpl.getPerks().size() / PERKS_PER_PAGE), this.perkGuiConfiguration.getNextPageSlot());
+
+        // Füge nur Seitenelemente hinzu, wenn es mehr als eine Seite gibt
+        if (filteredPerks.size() > PERKS_PER_PAGE) {
+            this.addGuiElement(new PreviousPageElement(this, this.messagesConfiguration.getMessage("gui.perk_gui.previous_page")), this.perkGuiConfiguration.getPreviousPageSlot());
+            this.addGuiElement(new NextPageElement(this, this.messagesConfiguration.getMessage("gui.perk_gui.next_page"), maxPage), this.perkGuiConfiguration.getNextPageSlot());
+        }
     }
+
+
+
 }
