@@ -19,8 +19,8 @@ public class AdvancedPerksPerkLimitExpansion extends AbstractAdvancedPerksExpans
     private SettingsConfiguration settingsConfiguration;
 
     @Inject
-    public AdvancedPerksPerkLimitExpansion(APLogger logger, AdvancedPerks advancedPerks) {
-        super(logger, advancedPerks);
+    public AdvancedPerksPerkLimitExpansion(AdvancedPerks advancedPerks) {
+        super(advancedPerks);
     }
 
     @Override

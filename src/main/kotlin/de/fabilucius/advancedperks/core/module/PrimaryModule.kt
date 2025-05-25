@@ -4,7 +4,7 @@ import com.google.inject.AbstractModule
 import com.google.inject.name.Names
 import com.google.inject.util.Providers
 import de.fabilucius.advancedperks.AdvancedPerks
-import de.fabilucius.advancedperks.api.AdvancedPerksApi
+import de.fabilucius.advancedperks.api.AdvancedPerksAPI
 import de.fabilucius.advancedperks.api.AdvancedPerksApiImpl
 import de.fabilucius.advancedperks.api.placeholderapi.AdvancedPerksEnabledExpansion
 import de.fabilucius.advancedperks.api.placeholderapi.AdvancedPerksPerkLimitExpansion
@@ -48,7 +48,7 @@ class PrimaryModule(private val advancedPerks: AdvancedPerks) : AbstractModule()
         bind(Database::class.java).toProvider(DatabaseProvider::class.java)
         bind(PerkStateController::class.java).asEagerSingleton()
         bind(GuiSystemManager::class.java).asEagerSingleton()
-        bind(AdvancedPerksApi::class.java).to(AdvancedPerksApiImpl::class.java).asEagerSingleton()
+        (bind(AdvancedPerksAPI::class.java) to AdvancedPerksApiImpl::class.java)
         bind(UpdateChecker::class.java).asEagerSingleton()
 
         bind(NamespacedKey::class.java).annotatedWith(Names.named("uuidKey")).toProvider(NamespacedKeyProvider::class.java)

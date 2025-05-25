@@ -25,7 +25,7 @@ import java.lang.reflect.Field;
 import java.nio.file.Files;
 import java.nio.file.StandardCopyOption;
 import java.util.logging.Level;
-import static de.fabilucius.advancedperks.api.AdvancedPerksAPI.perkManager;
+
 
 public class AdvancedPerks extends JavaPlugin {
 
@@ -39,6 +39,7 @@ public class AdvancedPerks extends JavaPlugin {
 
     @Inject
     private AdvancedPerksAPI advancedPerksApi;
+
     @Override
     public void onEnable() {
         createDefaultConfigFiles();
@@ -117,7 +118,9 @@ public class AdvancedPerks extends JavaPlugin {
     public AdvancedPerksAPI getAdvancedPerksApi() {
         return advancedPerksApi;
     }
-
+    public Injector getInjector() {
+        return injector;
+    }
     @Override
     public void onDisable() {
         this.injector.getInstance(AdvancedPerksBootstrap.class).shutdownPlugin();
