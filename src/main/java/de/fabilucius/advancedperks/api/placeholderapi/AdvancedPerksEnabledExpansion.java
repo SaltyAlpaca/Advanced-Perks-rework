@@ -2,15 +2,15 @@ package de.fabilucius.advancedperks.api.placeholderapi;
 
 import de.fabilucius.advancedperks.AdvancedPerks;
 import de.fabilucius.advancedperks.api.AdvancedPerksAPI;
-import de.fabilucius.advancedperks.registry.PerkRegistryImpl;
 import de.fabilucius.advancedperks.perk.Perk;
+import de.fabilucius.advancedperks.registry.PerkRegistryImpl;
 import org.bukkit.entity.Player;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 /**
  * Placeholder to check if a perk is currently enabled for a player.
- * Usage: %advancedperks.enabled_<perkId>%
+ * Usage: %advancedperks.enabled_&lt;perkId&gt;%
  */
 public class AdvancedPerksEnabledExpansion extends AbstractAdvancedPerksExpansion {
     private final PerkRegistryImpl perkRegistry;

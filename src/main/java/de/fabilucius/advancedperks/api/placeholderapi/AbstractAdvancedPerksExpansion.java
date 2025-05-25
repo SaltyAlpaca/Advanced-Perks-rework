@@ -10,7 +10,7 @@ import org.jetbrains.annotations.NotNull;
 public abstract class AbstractAdvancedPerksExpansion extends PlaceholderExpansion {
     protected final AdvancedPerks plugin;
 
-    public AbstractAdvancedPerksExpansion(AdvancedPerks plugin) {
+    protected AbstractAdvancedPerksExpansion(AdvancedPerks plugin) {
         this.plugin = plugin;
     }
 

@@ -2,7 +2,11 @@ package de.fabilucius.advancedperks.api.manager;
 
 import de.fabilucius.advancedperks.AdvancedPerks;
 import org.bukkit.entity.Player;
-import java.util.*;
+
+import java.util.Collections;
+import java.util.Map;
+import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
