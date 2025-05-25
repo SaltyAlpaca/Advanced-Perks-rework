@@ -3,7 +3,6 @@ package de.fabilucius.advancedperks.api.placeholderapi;
 import com.google.inject.Inject;
 import de.fabilucius.advancedperks.AdvancedPerks;
 import de.fabilucius.advancedperks.core.configuration.type.SettingsConfiguration;
-import de.fabilucius.advancedperks.core.logging.APLogger;
 import de.fabilucius.advancedperks.data.PerkData;
 import de.fabilucius.advancedperks.data.PerkDataRepository;
 import org.bukkit.entity.Player;
@@ -26,7 +25,7 @@ public class AdvancedPerksPerkLimitExpansion extends AbstractAdvancedPerksExpans
     @Override
     public @Nullable String onPlaceholderRequest(Player player, @NotNull String params) {
         PerkData perkData = this.perkDataRepository.getPerkDataByPlayer(player);
-        int maxPerksAmount = Math.max(perkData.queryMaxPerks(), this.settingsConfiguration.getGlobalPerkLimit());
+        int maxPerksAmount = perkData.getEffectiveMaxPerks(this.settingsConfiguration.getGlobalPerkLimit());
         return String.valueOf(perkData.getEnabledPerks().size() >= maxPerksAmount);
     }
 

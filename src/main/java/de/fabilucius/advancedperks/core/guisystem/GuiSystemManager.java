@@ -41,11 +41,20 @@ public class GuiSystemManager implements Listener {
         if (!this.guiWindows.containsKey(event.getClickedInventory()) || event.getCurrentItem() == null) {
             return;
         }
-        //TODO currently unneeded check if shiftclick needs exception
+
         GuiWindow guiWindow = this.guiWindows.get(event.getClickedInventory());
         if (guiWindow == null) {
             return;
         }
+
+        // Handle shift-click differently for certain GUI types
+        if (event.isShiftClick() && guiWindow instanceof de.fabilucius.advancedperks.guisystem.setupperkgui.SetupPerkGuiWindow) {
+            // Allow shift-click in setup GUI for easier item management
+            Optional<GuiElement> potentialGuiElement = guiWindow.getGuiElementByItemStack(event.getCurrentItem());
+            potentialGuiElement.ifPresent(guiElement -> guiElement.handleInventoryClick().accept(guiElement, event));
+            return;
+        }
+
         Optional<GuiElement> potentialGuiElement = guiWindow.getGuiElementByItemStack(event.getCurrentItem());
         if (potentialGuiElement.isEmpty()) {
             return;

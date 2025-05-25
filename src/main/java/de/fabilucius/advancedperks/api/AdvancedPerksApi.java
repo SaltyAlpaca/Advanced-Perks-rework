@@ -7,9 +7,7 @@ import org.bukkit.plugin.java.JavaPlugin;
 
 import java.util.Collections;
 import java.util.List;
-import java.util.Map;
 import java.util.Objects;
-import java.util.UUID;
 
 /**
  * Main API class for AdvancedPerks plugin.
@@ -21,10 +19,11 @@ import java.util.UUID;
 public final class AdvancedPerksAPI {
 
     private static AdvancedPerksAPI instance;
-    private final de.fabilucius.advancedperks.AdvancedPerks plugin;
-    private final de.fabilucius.advancedperks.api.manager.PerkManager perkManager;
     private static de.fabilucius.advancedperks.registry.PerkRegistry perkRegistry;
     private static de.fabilucius.advancedperks.data.PerkDataRepository perkDataRepository;
+
+    private final de.fabilucius.advancedperks.AdvancedPerks plugin;
+    private final de.fabilucius.advancedperks.api.manager.PerkManager perkManager;
     private final de.fabilucius.advancedperks.data.state.PerkStateController perkStateController;
 
     /**
@@ -118,23 +117,12 @@ public final class AdvancedPerksAPI {
     }
 
     /**
-     * Alias für hasPerkUnlocked – prüft, ob ein Spieler einen Perk freigeschaltet hat.
-     *
-     * @param player   Der Spieler
-     * @param perkId   Die Perk-ID
-     * @return true, wenn freigeschaltet, sonst false
-     */
-    public static boolean isPerkUnlocked(Player player, String perkId) {
-        return hasPerkUnlocked(player, perkId);
-    }
-
-    /**
      * Gets all currently enabled perks for a player.
      *
      * @param player The player
      * @return List of enabled perks
      */
-    public List<Perk> getEnabledPerks(Player player) {
+    public List<Perk> getEnabledPerksForPlayer(Player player) {
         de.fabilucius.advancedperks.data.PerkData perkData = perkDataRepository.getPerkDataByPlayer(player);
         return List.copyOf(perkData.getEnabledPerks());
     }
@@ -166,6 +154,17 @@ public final class AdvancedPerksAPI {
     public static boolean hasPerkUnlocked(Player player, String perkId) {
         de.fabilucius.advancedperks.data.PerkData perkData = perkDataRepository.getPerkDataByPlayer(player);
         return perkData.getBoughtPerks().contains(perkId);
+    }
+
+    /**
+     * Alias für hasPerkUnlocked – prüft, ob ein Spieler einen Perk freigeschaltet hat.
+     *
+     * @param player   Der Spieler
+     * @param perkId   Die Perk-ID
+     * @return true, wenn freigeschaltet, sonst false
+     */
+    public static boolean isPerkUnlocked(Player player, String perkId) {
+        return hasPerkUnlocked(player, perkId);
     }
 
     /**

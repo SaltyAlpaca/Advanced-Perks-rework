@@ -10,7 +10,7 @@ import org.jetbrains.annotations.Nullable;
 
 /**
  * Placeholder to check if a player has permission (unlock) for a perk.
- * Usage: %advancedperks.use_<perkId>%
+ * Usage: %advancedperks.use_&lt;perkId&gt;%
  */
 public class AdvancedPerksUseExpansion extends AbstractAdvancedPerksExpansion {
     private final PerkRegistryImpl perkRegistry;

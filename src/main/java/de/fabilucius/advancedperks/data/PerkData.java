@@ -94,22 +94,33 @@ public class PerkData {
         return Optional.ofNullable(Bukkit.getPlayer(this.getUuid()));
     }
 
-    //TODO make this private again (refactoring of the whole refreshing needed)
-    public int queryMaxPerks() {
+    private int queryMaxPerks() {
         if (this.getPlayer().isPresent()) {
             Player player = this.getPlayer().get();
-            OptionalInt possibleMaxPerks = player.getEffectivePermissions().stream().filter(permissionAttachmentInfo -> PERMISSION_PATTERN.matcher(permissionAttachmentInfo.getPermission()).matches()).mapToInt(value -> {
-                String potentialAmount = value.getPermission().replaceAll("advancedperks.maxperks.", "");
-                try {
-                    return Integer.parseInt(potentialAmount);
-                } catch (Exception ignored) {
-                    return 0;
-                }
-            }).max();
+            OptionalInt possibleMaxPerks = player.getEffectivePermissions().stream()
+                    .filter(permissionAttachmentInfo -> PERMISSION_PATTERN.matcher(permissionAttachmentInfo.getPermission()).matches())
+                    .mapToInt(value -> {
+                        String potentialAmount = value.getPermission().replaceAll("advancedperks.maxperks.", "");
+                        try {
+                            return Integer.parseInt(potentialAmount);
+                        } catch (NumberFormatException ignored) {
+                            return 0;
+                        }
+                    }).max();
             return possibleMaxPerks.isPresent() ? possibleMaxPerks.getAsInt() : -1;
         } else {
             return -1;
         }
+    }
+
+    /**
+     * Gets the effective maximum perks considering both permission-based and global limits.
+     *
+     * @param globalLimit The global perk limit from configuration
+     * @return The effective maximum number of perks
+     */
+    public int getEffectiveMaxPerks(int globalLimit) {
+        return Math.max(this.queryMaxPerks(), globalLimit);
     }
 
     public void refreshMaxActivePerks() {

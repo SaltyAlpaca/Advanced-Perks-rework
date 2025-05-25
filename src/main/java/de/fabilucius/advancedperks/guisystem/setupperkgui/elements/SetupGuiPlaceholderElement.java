@@ -11,6 +11,7 @@ import org.bukkit.ChatColor;
 import org.bukkit.Material;
 import org.bukkit.event.inventory.ClickType;
 import org.bukkit.event.inventory.InventoryClickEvent;
+import org.bukkit.event.inventory.InventoryAction;
 
 import java.util.function.BiConsumer;
 
@@ -24,11 +25,17 @@ public class SetupGuiPlaceholderElement extends AbstractGuiElement {
                 .build());
     }
 
-    //TODO currently unneeded make it impossible to drop it out of the inventory or move it into your own gui (for all placeholder elements)
     @Override
     public BiConsumer<GuiElement, InventoryClickEvent> handleInventoryClick() {
         return (guiElement, event) -> {
             SetupPerkGuiWindow guiWindow = (SetupPerkGuiWindow) this.getGuiWindow();
+
+            // Prevent item manipulation that could break the GUI setup
+            if (isRestrictedAction(event)) {
+                event.setCancelled(true);
+                return;
+            }
+
             if (event.getClick().equals(ClickType.DROP)) {
                 guiWindow.toggleHasBackground();
                 event.setCancelled(true);
@@ -43,7 +50,56 @@ public class SetupGuiPlaceholderElement extends AbstractGuiElement {
                     this.getGuiWindow().setTitle(result.getMessage());
                     this.playSound(GuiSound.ERROR_CLICK);
                 }
+            } else {
+                // Cancel other click types to prevent accidental item movement
+                event.setCancelled(true);
             }
         };
+    }
+
+    /**
+     * Checks if the inventory action is restricted to prevent GUI corruption.
+     *
+     * @param event The inventory click event
+     * @return true if the action should be restricted
+     */
+    private boolean isRestrictedAction(InventoryClickEvent event) {
+        InventoryAction action = event.getAction();
+        return isProblematicAction(action) ||
+                isProblematicShiftClick(event);
+    }
+
+    /**
+     * Checks if the inventory action is problematic.
+     *
+     * @param action The inventory action
+     * @return true if the action is problematic
+     */
+    private boolean isProblematicAction(InventoryAction action) {
+        return action == InventoryAction.MOVE_TO_OTHER_INVENTORY ||
+                action == InventoryAction.HOTBAR_SWAP ||
+                action == InventoryAction.HOTBAR_MOVE_AND_READD;
+    }
+
+    /**
+     * Checks if the shift-click is problematic.
+     *
+     * @param event The inventory click event
+     * @return true if the shift-click is problematic
+     */
+    private boolean isProblematicShiftClick(InventoryClickEvent event) {
+        return event.isShiftClick() && !isAllowedShiftClick(event);
+    }
+
+    /**
+     * Determines if a shift-click action is allowed in the setup GUI.
+     *
+     * @param event The inventory click event
+     * @return true if the shift-click is allowed
+     */
+    private boolean isAllowedShiftClick(InventoryClickEvent event) {
+        // Allow shift-click only for specific setup operations
+        return event.getClick() == ClickType.SHIFT_LEFT ||
+                event.getClick() == ClickType.SHIFT_RIGHT;
     }
 }

@@ -54,13 +54,16 @@ public class AdvancedPerks extends JavaPlugin {
             this.logger.info("Beginning the bootstrap process of the plugin.");
             this.injector.getInstance(AdvancedPerksBootstrap.class).initializePlugin();
             this.logger.info("Successfully finished the bootstrap process of the plugin.");
+
+            // Initialize PerkManager after all injections are complete
+            this.perkManager.initialize();
+
         } catch (AdvancedPerksException exception) {
             this.logger.log(Level.SEVERE, "An unexpected error occurred during the bootstrap process of the plugin.", exception);
         }
 
         // Register commands dynamically
         registerCommand("perks", injectorInstance.getInstance(PerksCommand.class));
-
     }
     private void createDefaultConfigFiles() {
         createFileIfMissing("database.yml");

@@ -13,7 +13,11 @@ public class TestModule extends AbstractModule {
     protected void configure() {
         bind(AdvancedPerks.class).toInstance(TestMocks.getAdvancedPerksMock());
         bind(APLogger.class).asEagerSingleton();
-        bind(File.class).annotatedWith(Names.named("configurationDirectory")).toInstance(new File("src/test/resources/configuration", "temp_configuration_directory"));
+        bind(File.class).annotatedWith(Names.named("configurationDirectory"))
+                .toInstance(new File("src/test/resources/configuration", "temp_configuration_directory"));
         bind(TestDataGeneration.class).asEagerSingleton();
+
+        // Don't bind PerkManager or its dependencies in tests - they cause circular dependencies
+        // Tests should create their own instances if needed
     }
 }

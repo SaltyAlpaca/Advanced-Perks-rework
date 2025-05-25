@@ -11,7 +11,6 @@ public class TestDataGeneration {
     Injector injector;
 
     public PerkTestDataGeneration perk() {
-        return this.injector.getInstance(PerkTestDataGeneration.class);
+        return new PerkTestDataGeneration(); // Create directly instead of using injector
     }
-
 }

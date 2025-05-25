@@ -21,23 +21,31 @@ public class VaultEconomyInterface implements EconomyInterface {
 
     @Nullable
     private Economy economy = null;
+    private final boolean economyAvailable;
 
     public VaultEconomyInterface() {
         RegisteredServiceProvider<Economy> economyServiceProvider = Bukkit.getServer().getServicesManager().getRegistration(Economy.class);
         if (economyServiceProvider != null) {
             economy = economyServiceProvider.getProvider();
+            economyAvailable = true;
+            logger.info("Vault economy integration initialized successfully.");
+        } else {
+            economyAvailable = false;
+            logger.warning("Vault economy provider not found. Economy features will be disabled.");
         }
     }
 
     @Override
     public EconomyTransactionResult purchasePerk(Player player, Perk perk) {
-        if (this.economy == null) {
-            //TODO currently unneeded maybe change it in a startup exception/error
+        if (!economyAvailable || this.economy == null) {
+            logger.severe("Economy transaction attempted but no economy provider is available.");
             return EconomyTransactionResult.NO_ECONOMY_PROVIDER;
         }
+
         if (this.economy.getBalance(player) < perk.getPrice().get()) {
             return EconomyTransactionResult.NOT_ENOUGH_FUNDS;
         }
+
         EconomyResponse economyResponse = this.economy.withdrawPlayer(player, perk.getPrice().get());
         return switch (economyResponse.type) {
             case FAILURE, NOT_IMPLEMENTED -> {
@@ -46,5 +54,14 @@ public class VaultEconomyInterface implements EconomyInterface {
             }
             default -> EconomyTransactionResult.SUCCESS;
         };
+    }
+
+    /**
+     * Checks if the economy interface is properly initialized and available.
+     *
+     * @return true if economy is available, false otherwise
+     */
+    public boolean isEconomyAvailable() {
+        return economyAvailable && economy != null;
     }
 }
