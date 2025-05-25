@@ -73,7 +73,7 @@ public class DoubleJumpPerk extends AbstractDefaultPerk implements ListenerPerk 
         UUID uuid = player.getUniqueId();
 
         // Update flight permission when touching ground
-        if (onGround && !wasOnGround.getOrDefault(uuid, false)) {
+        if (onGround && !Boolean.TRUE.equals(wasOnGround.get(uuid))) {
             updateFlightState(player);
         }
 
@@ -96,10 +96,14 @@ public class DoubleJumpPerk extends AbstractDefaultPerk implements ListenerPerk 
 
         event.setCancelled(true);
 
+        // Always immediately disable flight to prevent hovering
+        player.setAllowFlight(false);
+        player.setFlying(false);
+
         // Check cooldown
         if (isOnCooldown(player)) {
             player.sendMessage("§cDouble Jump ist noch im Cooldown!");
-            updateFlightState(player);
+            // Don't re-enable flight at all during cooldown
             return;
         }
 
@@ -107,16 +111,12 @@ public class DoubleJumpPerk extends AbstractDefaultPerk implements ListenerPerk 
         performDoubleJump(player);
         setCooldown(player);
 
-        // Reset flight after jump
-        player.setAllowFlight(false);
-        player.setFlying(false);
-
-        // Re-enable flight after delay if still has perk
+        // Re-enable flight after delay only if not on ground
         Bukkit.getScheduler().runTaskLater(advancedPerks, () -> {
             if (hasPerkEnabled(player) && !isPlayerOnGround(player)) {
                 updateFlightState(player);
             }
-        }, 5L);
+        }, 15L);
     }
 
     @Override
@@ -146,11 +146,9 @@ public class DoubleJumpPerk extends AbstractDefaultPerk implements ListenerPerk 
     }
 
     private void updateFlightState(Player player) {
-        if (player.getGameMode() != GameMode.CREATIVE && player.getGameMode() != GameMode.SPECTATOR) {
-            if (hasPerkEnabled(player)) {
-                player.setAllowFlight(true);
-                player.setFlying(false);
-            }
+        if (player.getGameMode() != GameMode.CREATIVE && player.getGameMode() != GameMode.SPECTATOR && hasPerkEnabled(player)) {
+            player.setAllowFlight(true);
+            player.setFlying(false);
         }
     }
 
@@ -168,8 +166,9 @@ public class DoubleJumpPerk extends AbstractDefaultPerk implements ListenerPerk 
             }
         }
 
-        // Fallback: check if player's onGround flag is true
-        return player.isOnGround();
+        // Alternative ground check without deprecated method
+        Location below = loc.clone().subtract(0, 0.1, 0);
+        return below.getBlock().getType().isSolid();
     }
 
     private boolean hasPerkEnabled(Player player) {
