@@ -1,9 +1,10 @@
 package de.fabilucius.advancedperks.api;
 
+import com.google.inject.Inject;
+import com.google.inject.Singleton;
 import de.fabilucius.advancedperks.perk.Perk;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
-import org.bukkit.plugin.java.JavaPlugin;
 
 import java.util.Collections;
 import java.util.List;
@@ -16,6 +17,7 @@ import java.util.Objects;
  * @author Fabilucius
  * @version 3.4.1
  */
+@Singleton
 public final class AdvancedPerksAPI {
 
     private static AdvancedPerksAPI instance;
@@ -27,14 +29,20 @@ public final class AdvancedPerksAPI {
     private final de.fabilucius.advancedperks.data.state.PerkStateController perkStateController;
 
     /**
-     * Private constructor to ensure singleton pattern.
+     * Constructor for dependency injection.
      */
-    private AdvancedPerksAPI() {
-        this.plugin = JavaPlugin.getPlugin(de.fabilucius.advancedperks.AdvancedPerks.class);
-        this.perkManager = plugin.getPerkManager();
-        AdvancedPerksAPI.perkRegistry = plugin.getInjector().getInstance(de.fabilucius.advancedperks.registry.PerkRegistry.class);
-        AdvancedPerksAPI.perkDataRepository = plugin.getInjector().getInstance(de.fabilucius.advancedperks.data.PerkDataRepository.class);
-        this.perkStateController = plugin.getInjector().getInstance(de.fabilucius.advancedperks.data.state.PerkStateController.class);
+    @Inject
+    public AdvancedPerksAPI(de.fabilucius.advancedperks.AdvancedPerks plugin,
+                            de.fabilucius.advancedperks.api.manager.PerkManager perkManager,
+                            de.fabilucius.advancedperks.registry.PerkRegistry perkRegistry,
+                            de.fabilucius.advancedperks.data.PerkDataRepository perkDataRepository,
+                            de.fabilucius.advancedperks.data.state.PerkStateController perkStateController) {
+        this.plugin = plugin;
+        this.perkManager = perkManager;
+        AdvancedPerksAPI.perkRegistry = perkRegistry;
+        AdvancedPerksAPI.perkDataRepository = perkDataRepository;
+        this.perkStateController = perkStateController;
+        AdvancedPerksAPI.instance = this;
     }
 
     /**
@@ -44,7 +52,7 @@ public final class AdvancedPerksAPI {
      */
     public static AdvancedPerksAPI getInstance() {
         if (instance == null) {
-            instance = new AdvancedPerksAPI();
+            throw new IllegalStateException("AdvancedPerksAPI not initialized yet!");
         }
         return instance;
     }

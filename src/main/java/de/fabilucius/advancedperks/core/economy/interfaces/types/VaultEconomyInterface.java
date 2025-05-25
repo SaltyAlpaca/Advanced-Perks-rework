@@ -16,14 +16,15 @@ import org.jetbrains.annotations.Nullable;
 @Singleton
 public class VaultEconomyInterface implements EconomyInterface {
 
-    @Inject
-    private APLogger logger;
-
+    private final APLogger logger;
     @Nullable
     private Economy economy = null;
     private final boolean economyAvailable;
 
-    public VaultEconomyInterface() {
+    @Inject
+    public VaultEconomyInterface(APLogger logger) {
+        this.logger = logger;
+
         RegisteredServiceProvider<Economy> economyServiceProvider = Bukkit.getServer().getServicesManager().getRegistration(Economy.class);
         if (economyServiceProvider != null) {
             economy = economyServiceProvider.getProvider();

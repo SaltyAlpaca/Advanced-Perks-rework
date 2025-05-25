@@ -1,5 +1,6 @@
 package de.fabilucius.advancedperks.api.placeholderapi;
 
+import com.google.inject.Inject;
 import de.fabilucius.advancedperks.AdvancedPerks;
 import de.fabilucius.advancedperks.api.AdvancedPerksAPI;
 import de.fabilucius.advancedperks.registry.PerkRegistryImpl;
@@ -15,6 +16,7 @@ import org.jetbrains.annotations.Nullable;
 public class AdvancedPerksUseExpansion extends AbstractAdvancedPerksExpansion {
     private final PerkRegistryImpl perkRegistry;
 
+    @Inject
     public AdvancedPerksUseExpansion(AdvancedPerks plugin, PerkRegistryImpl perkRegistry) {
         super(plugin);
         this.perkRegistry = perkRegistry;

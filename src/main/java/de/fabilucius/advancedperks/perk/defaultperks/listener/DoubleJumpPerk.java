@@ -9,13 +9,17 @@ import de.fabilucius.advancedperks.perk.annotation.PerkIdentifier;
 import de.fabilucius.advancedperks.perk.properties.PerkDescription;
 import de.fabilucius.advancedperks.perk.properties.PerkGuiIcon;
 import de.fabilucius.advancedperks.perk.types.ListenerPerk;
+import org.bukkit.Bukkit;
 import org.bukkit.GameMode;
+import org.bukkit.Location;
+import org.bukkit.Material;
 import org.bukkit.Particle;
 import org.bukkit.Sound;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
-import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerJoinEvent;
+import org.bukkit.event.player.PlayerMoveEvent;
+import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.event.player.PlayerToggleFlightEvent;
 import org.bukkit.util.Vector;
 
@@ -24,11 +28,11 @@ import java.util.Map;
 import java.util.UUID;
 
 @PerkIdentifier("double_jump")
-public class DoubleJumpPerk extends AbstractDefaultPerk implements ListenerPerk, Listener {
+public class DoubleJumpPerk extends AbstractDefaultPerk implements ListenerPerk {
 
-    private static final long COOLDOWN_TICKS = 60;
-    private static final double JUMP_POWER = 1.0;
-    private static final double FORWARD_MULTIPLIER = 0.7;
+    private static final long COOLDOWN_MS = 3000; // 3 seconds
+    private static final double JUMP_POWER = 1.2;
+    private static final double FORWARD_MULTIPLIER = 0.5;
 
     @Inject
     private PerkDataRepository perkDataRepository;
@@ -36,6 +40,7 @@ public class DoubleJumpPerk extends AbstractDefaultPerk implements ListenerPerk,
     private AdvancedPerks advancedPerks;
 
     private final Map<UUID, Long> cooldowns = new HashMap<>();
+    private final Map<UUID, Boolean> wasOnGround = new HashMap<>();
 
     public DoubleJumpPerk(String identifier, String displayName, PerkDescription perkDescription,
                           PerkGuiIcon perkGuiIcon, boolean enabled, Map<String, Object> flags) {
@@ -44,45 +49,89 @@ public class DoubleJumpPerk extends AbstractDefaultPerk implements ListenerPerk,
 
     @EventHandler
     public void onPlayerJoin(PlayerJoinEvent event) {
-        updatePlayerFlightPermission(event.getPlayer());
+        Player player = event.getPlayer();
+        if (hasPerkEnabled(player)) {
+            Bukkit.getScheduler().runTaskLater(advancedPerks, () -> updateFlightState(player), 1L);
+        }
+    }
+
+    @EventHandler
+    public void onPlayerQuit(PlayerQuitEvent event) {
+        UUID uuid = event.getPlayer().getUniqueId();
+        cooldowns.remove(uuid);
+        wasOnGround.remove(uuid);
+    }
+
+    @EventHandler
+    public void onPlayerMove(PlayerMoveEvent event) {
+        Player player = event.getPlayer();
+        if (!hasPerkEnabled(player)) {
+            return;
+        }
+
+        boolean onGround = isPlayerOnGround(player);
+        UUID uuid = player.getUniqueId();
+
+        // Update flight permission when touching ground
+        if (onGround && !wasOnGround.getOrDefault(uuid, false)) {
+            updateFlightState(player);
+        }
+
+        wasOnGround.put(uuid, onGround);
     }
 
     @EventHandler
     public void onPlayerToggleFlight(PlayerToggleFlightEvent event) {
         Player player = event.getPlayer();
 
+        // Ignore creative/spectator mode
         if (player.getGameMode() == GameMode.CREATIVE || player.getGameMode() == GameMode.SPECTATOR) {
             return;
         }
 
-        PerkData perkData = perkDataRepository.getPerkDataByPlayer(player);
-        if (!perkData.getEnabledPerks().contains(this)) {
+        // Only handle if perk is enabled
+        if (!hasPerkEnabled(player)) {
             return;
         }
 
         event.setCancelled(true);
-        player.setFlying(false);
-        player.setAllowFlight(false);
 
+        // Check cooldown
         if (isOnCooldown(player)) {
-            player.sendMessage("§cDer Double Jump hat noch Cooldown!");
+            player.sendMessage("§cDouble Jump ist noch im Cooldown!");
+            updateFlightState(player);
             return;
         }
 
+        // Perform double jump
         performDoubleJump(player);
         setCooldown(player);
 
-        advancedPerks.getServer().getScheduler().runTaskLater(advancedPerks,
-                () -> updatePlayerFlightPermission(player), 1L);
+        // Reset flight after jump
+        player.setAllowFlight(false);
+        player.setFlying(false);
+
+        // Re-enable flight after delay if still has perk
+        Bukkit.getScheduler().runTaskLater(advancedPerks, () -> {
+            if (hasPerkEnabled(player) && !isPlayerOnGround(player)) {
+                updateFlightState(player);
+            }
+        }, 5L);
     }
 
-    @EventHandler
-    public void onPlayerLand(PlayerToggleFlightEvent event) {
-        Player player = event.getPlayer();
+    @Override
+    public void onPerkEnable(Player player) {
+        updateFlightState(player);
+    }
 
-        if (isPlayerOnGround(player)) {
-            updatePlayerFlightPermission(player);
+    @Override
+    public void onPerkDisable(Player player) {
+        if (player.getGameMode() == GameMode.SURVIVAL || player.getGameMode() == GameMode.ADVENTURE) {
+            player.setAllowFlight(false);
+            player.setFlying(false);
         }
+        cooldowns.remove(player.getUniqueId());
+        wasOnGround.remove(player.getUniqueId());
     }
 
     private void performDoubleJump(Player player) {
@@ -90,32 +139,50 @@ public class DoubleJumpPerk extends AbstractDefaultPerk implements ListenerPerk,
         velocity.setY(JUMP_POWER);
         player.setVelocity(velocity);
 
-        // Visuelle und Audio-Effekte
-        player.playSound(player.getLocation(), Sound.ENTITY_ENDER_DRAGON_FLAP, 0.5f, 1f);
-        player.getWorld().spawnParticle(Particle.CLOUD, player.getLocation(), 10, 0.5, 0, 0.5, 0.1);
+        // Effects
+        player.playSound(player.getLocation(), Sound.ENTITY_ENDER_DRAGON_FLAP, 0.3f, 1.5f);
+        player.getWorld().spawnParticle(Particle.CLOUD, player.getLocation().add(0, 0.5, 0),
+                15, 0.3, 0.1, 0.3, 0.05);
     }
 
-    private void updatePlayerFlightPermission(Player player) {
+    private void updateFlightState(Player player) {
         if (player.getGameMode() != GameMode.CREATIVE && player.getGameMode() != GameMode.SPECTATOR) {
-            PerkData perkData = perkDataRepository.getPerkDataByPlayer(player);
-            if (perkData.getEnabledPerks().contains(this) && isPlayerOnGround(player)) {
+            if (hasPerkEnabled(player)) {
                 player.setAllowFlight(true);
                 player.setFlying(false);
             }
         }
     }
+
     private boolean isPlayerOnGround(Player player) {
-        return player.getLocation().subtract(0, 0.1, 0).getBlock().getType().isSolid();
+        Location loc = player.getLocation();
+
+        // Check multiple points around player's feet
+        for (double x = -0.3; x <= 0.3; x += 0.3) {
+            for (double z = -0.3; z <= 0.3; z += 0.3) {
+                Location checkLoc = loc.clone().add(x, -0.1, z);
+                Material mat = checkLoc.getBlock().getType();
+                if (mat.isSolid() && mat != Material.AIR) {
+                    return true;
+                }
+            }
+        }
+
+        // Fallback: check if player's onGround flag is true
+        return player.isOnGround();
+    }
+
+    private boolean hasPerkEnabled(Player player) {
+        PerkData perkData = perkDataRepository.getPerkDataByPlayer(player);
+        return perkData.getEnabledPerks().contains(this);
     }
 
     private boolean isOnCooldown(Player player) {
         Long lastUsage = cooldowns.get(player.getUniqueId());
-        return lastUsage != null && (System.currentTimeMillis() - lastUsage) < (COOLDOWN_TICKS * 50);
+        return lastUsage != null && (System.currentTimeMillis() - lastUsage) < COOLDOWN_MS;
     }
 
     private void setCooldown(Player player) {
         cooldowns.put(player.getUniqueId(), System.currentTimeMillis());
     }
-
-
 }
