@@ -4,6 +4,7 @@ import com.google.inject.Inject;
 import de.fabilucius.advancedperks.data.PerkData;
 import de.fabilucius.advancedperks.data.PerkDataRepository;
 import de.fabilucius.advancedperks.perk.AbstractDefaultPerk;
+import de.fabilucius.advancedperks.perk.Perk;
 import de.fabilucius.advancedperks.perk.annotation.PerkIdentifier;
 import de.fabilucius.advancedperks.perk.properties.PerkDescription;
 import de.fabilucius.advancedperks.perk.properties.PerkGuiIcon;
@@ -46,6 +47,9 @@ public class BirdPerk extends AbstractDefaultPerk implements ListenerPerk {
 
     @Override
     public void onPerkEnable(Player player) {
+        // Deaktiviere Double Jump-Perk wenn Bird aktiviert wird
+        disableDoubleJumpPerk(player);
+
         this.enableFlying(player);
     }
 
@@ -60,5 +64,29 @@ public class BirdPerk extends AbstractDefaultPerk implements ListenerPerk {
     private void enableFlying(Player player) {
         player.setAllowFlight(true);
         player.setFlying(true);
+    }
+
+    private void disableDoubleJumpPerk(Player player) {
+        PerkData perkData = perkDataRepository.getPerkDataByPlayer(player);
+
+        // Finde das Double Jump-Perk
+        Perk doubleJumpPerk = null;
+        for (Perk perk : perkData.getEnabledPerks()) {
+            if (perk.getIdentifier().equals("double_jump")) {
+                doubleJumpPerk = perk;
+                break;
+            }
+        }
+
+        // Deaktiviere Double Jump-Perk wenn gefunden
+        if (doubleJumpPerk != null) {
+            perkData.getEnabledPerks().remove(doubleJumpPerk);
+            perkDataRepository.savePerkDataAsync(perkData);
+
+            // Rufe onPerkDisable auf wenn es ein AbstractDefaultPerk ist
+            if (doubleJumpPerk instanceof AbstractDefaultPerk) {
+                doubleJumpPerk.onPerkDisable(player);
+            }
+        }
     }
 }

@@ -4,23 +4,25 @@ import com.google.inject.Inject;
 import de.fabilucius.advancedperks.AdvancedPerks;
 import de.fabilucius.advancedperks.data.PerkData;
 import de.fabilucius.advancedperks.data.PerkDataRepository;
+import de.fabilucius.advancedperks.perk.Perk;
 import de.fabilucius.advancedperks.perk.AbstractDefaultPerk;
 import de.fabilucius.advancedperks.perk.annotation.PerkIdentifier;
 import de.fabilucius.advancedperks.perk.properties.PerkDescription;
 import de.fabilucius.advancedperks.perk.properties.PerkGuiIcon;
 import de.fabilucius.advancedperks.perk.types.ListenerPerk;
-import org.bukkit.Bukkit;
 import org.bukkit.GameMode;
 import org.bukkit.Location;
-import org.bukkit.Material;
 import org.bukkit.Particle;
 import org.bukkit.Sound;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
+import org.bukkit.event.EventPriority;
+import org.bukkit.event.entity.EntityDamageEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerMoveEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.event.player.PlayerToggleFlightEvent;
+import org.bukkit.event.player.PlayerGameModeChangeEvent;
 import org.bukkit.util.Vector;
 
 import java.util.HashMap;
@@ -30,17 +32,18 @@ import java.util.UUID;
 @PerkIdentifier("double_jump")
 public class DoubleJumpPerk extends AbstractDefaultPerk implements ListenerPerk {
 
-    private static final long COOLDOWN_MS = 3000; // 3 seconds
-    private static final double JUMP_POWER = 1.2;
-    private static final double FORWARD_MULTIPLIER = 0.5;
+    private static final double JUMP_POWER = 0.9;
+    private static final double FORWARD_MULTIPLIER = 0.4;
+    private static final double GROUND_CHECK_DISTANCE = 0.3; // Erhöht für bessere Ground-Detection
 
     @Inject
     private PerkDataRepository perkDataRepository;
     @Inject
     private AdvancedPerks advancedPerks;
 
-    private final Map<UUID, Long> cooldowns = new HashMap<>();
+    private final Map<UUID, Boolean> canDoubleJump = new HashMap<>();
     private final Map<UUID, Boolean> wasOnGround = new HashMap<>();
+    private final Map<UUID, Long> lastJumpTime = new HashMap<>(); // Track letzte Jump-Zeit für Fallschaden
 
     public DoubleJumpPerk(String identifier, String displayName, PerkDescription perkDescription,
                           PerkGuiIcon perkGuiIcon, boolean enabled, Map<String, Object> flags) {
@@ -51,15 +54,36 @@ public class DoubleJumpPerk extends AbstractDefaultPerk implements ListenerPerk 
     public void onPlayerJoin(PlayerJoinEvent event) {
         Player player = event.getPlayer();
         if (hasPerkEnabled(player)) {
-            Bukkit.getScheduler().runTaskLater(advancedPerks, () -> updateFlightState(player), 1L);
+            enableDoubleJump(player);
         }
     }
 
     @EventHandler
     public void onPlayerQuit(PlayerQuitEvent event) {
         UUID uuid = event.getPlayer().getUniqueId();
-        cooldowns.remove(uuid);
+        canDoubleJump.remove(uuid);
         wasOnGround.remove(uuid);
+        lastJumpTime.remove(uuid);
+    }
+
+    @EventHandler
+    public void onPlayerGameModeChange(PlayerGameModeChangeEvent event) {
+        Player player = event.getPlayer();
+        UUID uuid = player.getUniqueId();
+
+        // Delayed task um sicherzustellen dass GameMode bereits gewechselt wurde
+        advancedPerks.getServer().getScheduler().runTaskLater(advancedPerks, () -> {
+            if (hasPerkEnabled(player)) {
+                enableDoubleJump(player);
+                canDoubleJump.put(uuid, true);
+                wasOnGround.put(uuid, true);
+            } else {
+                disableDoubleJump(player);
+                canDoubleJump.remove(uuid);
+                wasOnGround.remove(uuid);
+                lastJumpTime.remove(uuid);
+            }
+        }, 1L);
     }
 
     @EventHandler
@@ -69,106 +93,144 @@ public class DoubleJumpPerk extends AbstractDefaultPerk implements ListenerPerk 
             return;
         }
 
-        boolean onGround = isPlayerOnGround(player);
         UUID uuid = player.getUniqueId();
+        boolean currentlyOnGround = isPlayerOnGround(player);
+        boolean previouslyOnGround = Boolean.TRUE.equals(wasOnGround.get(uuid));
 
-        // Update flight permission when touching ground
-        if (onGround && !Boolean.TRUE.equals(wasOnGround.get(uuid))) {
-            updateFlightState(player);
+        // Update ground status
+        wasOnGround.put(uuid, currentlyOnGround);
+
+        // Nur Double Jump aktivieren wenn:
+        // 1. Spieler ist auf dem Boden UND
+        // 2. Spieler war vorher NICHT auf dem Boden (verhindert ständige Reaktivierung)
+        if (currentlyOnGround && !previouslyOnGround) {
+            canDoubleJump.put(uuid, true);
+            enableDoubleJump(player);
         }
 
-        wasOnGround.put(uuid, onGround);
+        // Flight deaktivieren wenn auf dem Boden (verhindert permanentes Fliegen)
+        if (currentlyOnGround && player.isFlying()) {
+            player.setFlying(false);
+        }
     }
 
     @EventHandler
     public void onPlayerToggleFlight(PlayerToggleFlightEvent event) {
         Player player = event.getPlayer();
 
-        // Ignore creative/spectator mode
+        // Ignore creative/spectator
         if (player.getGameMode() == GameMode.CREATIVE || player.getGameMode() == GameMode.SPECTATOR) {
             return;
         }
 
-        // Only handle if perk is enabled
+        // Only handle if perk enabled
         if (!hasPerkEnabled(player)) {
             return;
         }
 
         event.setCancelled(true);
 
-        // Always immediately disable flight to prevent hovering
-        player.setAllowFlight(false);
-        player.setFlying(false);
+        UUID uuid = player.getUniqueId();
 
-        // Check cooldown
-        if (isOnCooldown(player)) {
-            player.sendMessage("§cDouble Jump ist noch im Cooldown!");
-            // Don't re-enable flight at all during cooldown
+        // Check if can double jump
+        if (!Boolean.TRUE.equals(canDoubleJump.get(uuid))) {
+            player.setAllowFlight(false);
             return;
         }
 
         // Perform double jump
         performDoubleJump(player);
-        setCooldown(player);
+        canDoubleJump.put(uuid, false); // Deaktiviere Double Jump bis zur nächsten Landung
+        lastJumpTime.put(uuid, System.currentTimeMillis()); // Speichere Jump-Zeit
 
-        // Re-enable flight after delay only if not on ground
-        Bukkit.getScheduler().runTaskLater(advancedPerks, () -> {
-            if (hasPerkEnabled(player) && !isPlayerOnGround(player)) {
-                updateFlightState(player);
+        player.setAllowFlight(false);
+        player.setFlying(false);
+    }
+
+    // Fallschaden-Handler: Verhindert ONLY Fallschaden kurz nach Double Jump
+    @EventHandler(priority = EventPriority.HIGH)
+    public void onEntityDamage(EntityDamageEvent event) {
+        if (!(event.getEntity() instanceof Player)) {
+            return;
+        }
+
+        Player player = (Player) event.getEntity();
+
+        if (event.getCause() == EntityDamageEvent.DamageCause.FALL && hasPerkEnabled(player)) {
+            UUID uuid = player.getUniqueId();
+            Long lastJump = lastJumpTime.get(uuid);
+
+            // Nur Fallschaden verhindern wenn Double Jump in letzten 3 Sekunden verwendet wurde
+            if (lastJump != null && (System.currentTimeMillis() - lastJump) < 3000) {
+                event.setCancelled(true);
+                lastJumpTime.remove(uuid); // Entferne nach Verwendung
             }
-        }, 15L);
+        }
     }
 
     @Override
     public void onPerkEnable(Player player) {
-        updateFlightState(player);
+        // Deaktiviere Bird-Perk wenn Double Jump aktiviert wird
+        disableBirdPerk(player);
+
+        UUID uuid = player.getUniqueId();
+        enableDoubleJump(player);
+        canDoubleJump.put(uuid, true);
+        wasOnGround.put(uuid, isPlayerOnGround(player));
     }
 
     @Override
     public void onPerkDisable(Player player) {
-        if (player.getGameMode() == GameMode.SURVIVAL || player.getGameMode() == GameMode.ADVENTURE) {
-            player.setAllowFlight(false);
-            player.setFlying(false);
-        }
-        cooldowns.remove(player.getUniqueId());
-        wasOnGround.remove(player.getUniqueId());
+        disableDoubleJump(player);
+        UUID uuid = player.getUniqueId();
+        canDoubleJump.remove(uuid);
+        wasOnGround.remove(uuid);
+        lastJumpTime.remove(uuid);
     }
 
     private void performDoubleJump(Player player) {
-        Vector velocity = player.getLocation().getDirection().multiply(FORWARD_MULTIPLIER);
+        Vector velocity = player.getVelocity();
+        Vector direction = player.getLocation().getDirection();
+
+        // Set upward velocity
         velocity.setY(JUMP_POWER);
+
+        // Add forward momentum
+        velocity.add(direction.multiply(FORWARD_MULTIPLIER));
+
         player.setVelocity(velocity);
 
         // Effects
-        player.playSound(player.getLocation(), Sound.ENTITY_ENDER_DRAGON_FLAP, 0.3f, 1.5f);
-        player.getWorld().spawnParticle(Particle.CLOUD, player.getLocation().add(0, 0.5, 0),
-                15, 0.3, 0.1, 0.3, 0.05);
+        player.playSound(player.getLocation(), Sound.ENTITY_ENDER_DRAGON_FLAP, 0.4f, 1.5f);
+        player.getWorld().spawnParticle(Particle.CLOUD,
+                player.getLocation().add(0, 0.3, 0),
+                8, 0.2, 0.1, 0.2, 0.05);
     }
 
-    private void updateFlightState(Player player) {
-        if (player.getGameMode() != GameMode.CREATIVE && player.getGameMode() != GameMode.SPECTATOR && hasPerkEnabled(player)) {
+    private void enableDoubleJump(Player player) {
+        if (player.getGameMode() == GameMode.SURVIVAL || player.getGameMode() == GameMode.ADVENTURE) {
             player.setAllowFlight(true);
+            player.setFlying(false);
+        }
+    }
+
+    private void disableDoubleJump(Player player) {
+        if (player.getGameMode() == GameMode.SURVIVAL || player.getGameMode() == GameMode.ADVENTURE) {
+            player.setAllowFlight(false);
             player.setFlying(false);
         }
     }
 
     private boolean isPlayerOnGround(Player player) {
         Location loc = player.getLocation();
-
-        // Check multiple points around player's feet
-        for (double x = -0.3; x <= 0.3; x += 0.3) {
-            for (double z = -0.3; z <= 0.3; z += 0.3) {
-                Location checkLoc = loc.clone().add(x, -0.1, z);
-                Material mat = checkLoc.getBlock().getType();
-                if (mat.isSolid() && mat != Material.AIR) {
-                    return true;
-                }
+        // Verbesserte Ground-Detection mit größerer Distanz
+        for (double y = 0.1; y <= GROUND_CHECK_DISTANCE; y += 0.1) {
+            Location below = loc.clone().subtract(0, y, 0);
+            if (below.getBlock().getType().isSolid()) {
+                return true;
             }
         }
-
-        // Alternative ground check without deprecated method
-        Location below = loc.clone().subtract(0, 0.1, 0);
-        return below.getBlock().getType().isSolid();
+        return false;
     }
 
     private boolean hasPerkEnabled(Player player) {
@@ -176,12 +238,27 @@ public class DoubleJumpPerk extends AbstractDefaultPerk implements ListenerPerk 
         return perkData.getEnabledPerks().contains(this);
     }
 
-    private boolean isOnCooldown(Player player) {
-        Long lastUsage = cooldowns.get(player.getUniqueId());
-        return lastUsage != null && (System.currentTimeMillis() - lastUsage) < COOLDOWN_MS;
-    }
+    private void disableBirdPerk(Player player) {
+        PerkData perkData = perkDataRepository.getPerkDataByPlayer(player);
 
-    private void setCooldown(Player player) {
-        cooldowns.put(player.getUniqueId(), System.currentTimeMillis());
+        // Finde das Bird-Perk
+        Perk birdPerk = null;
+        for (Perk perk : perkData.getEnabledPerks()) {
+            if (perk.getIdentifier().equals("bird")) {
+                birdPerk = perk;
+                break;
+            }
+        }
+
+        // Deaktiviere Bird-Perk wenn gefunden
+        if (birdPerk != null) {
+            perkData.getEnabledPerks().remove(birdPerk);
+            perkDataRepository.savePerkDataAsync(perkData);
+
+            // Rufe onPerkDisable auf wenn es ein AbstractDefaultPerk ist
+            if (birdPerk instanceof AbstractDefaultPerk) {
+                birdPerk.onPerkDisable(player);
+            }
+        }
     }
 }
